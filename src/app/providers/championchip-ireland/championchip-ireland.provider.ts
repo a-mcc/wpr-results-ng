@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { Race, RaceMap } from 'src/app/common/race';
+import { Race, RaceMap } from '../../common/race';
 import { IProvider } from '../provider';
 import { firstValueFrom } from 'rxjs';
 import { ProviderCache } from '../provider.cache';

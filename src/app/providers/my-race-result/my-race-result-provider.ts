@@ -1,6 +1,6 @@
 import { HttpClient } from '@angular/common/http';
 import { Injectable } from '@angular/core';
-import { Race, RaceMap } from 'src/app/common/race';
+import { Race, RaceMap } from '../../common/race';
 import { IProvider } from '../provider';
 import { firstValueFrom } from 'rxjs';
 import { ProviderCache } from '../provider.cache';
@@ -8,6 +8,7 @@ import { ProviderCache } from '../provider.cache';
 enum Races {
   BelfastCityHalfMarathon23 = "Belfast City Half Marathon '23",
   BelfastCityHalfMarathon24 = "Belfast City Half Marathon '24",
+  BelfastCityMarathon26 = "Belfast City Marathon '26",
 }
 
 @Injectable({ providedIn: 'root' })
@@ -31,6 +32,10 @@ export class MyRaceResult implements IProvider {
     this.races.set(
       Races.BelfastCityHalfMarathon24,
       async () => await this.cache.getOrRetrieve(this.name, Races.BelfastCityHalfMarathon24, () => this.getBelfastCityHalfMarathon24())
+    );
+    this.races.set(
+      Races.BelfastCityMarathon26,
+      async () => await this.cache.getOrRetrieve(this.name, Races.BelfastCityMarathon26, () => this.getBelfastCityMarathon26())
     );
 
     return this.races;
@@ -99,6 +104,51 @@ export class MyRaceResult implements IProvider {
       results: results,
       headers: ['Pos', 'Bib', 'Name', 'Club', 'Finish Time', 'Chip Time'],
       headersMobile: ['Pos', 'Bib', 'Name', 'Club', 'Finish Time', 'Chip Time'],
+    };
+  }
+
+  private async getBelfastCityMarathon26(): Promise<Race> {
+    const json = await firstValueFrom(this.http.get('./assets/results/belfast-marathon-2026.json', { responseType: 'text' }));
+    const rawResults: { [key: string]: string[][] } = JSON.parse(json); 
+
+    const byChipTime = (a: string[], b: string[]): number => a[9].padStart(8, '0').localeCompare(b[9].padStart(8, '0'));
+
+    Object.keys(rawResults).forEach((cat: string) => {
+      rawResults[cat].sort(byChipTime).forEach((result: string[], index: number) => {
+        result.push(cat.split('_')[1]);
+        result.push(`${index + 1}`);
+      });
+    });
+
+    ['F', 'M'].forEach((gender) => {
+      Object.keys(rawResults)
+        .filter((key) => key.indexOf(`_${gender}`) > -1)
+        .map((key: string) => rawResults[key])
+        .flat(1)
+        .sort(byChipTime)
+        .forEach((result: string[], index: number) => result.push(`${index + 1}`));
+    });
+
+    const results = Object.values(rawResults)
+      .flat(1)
+      .sort(byChipTime)
+      .map((result, index) => ({
+        Pos: index + 1,
+        'Gender Pos': Number(result[14]),
+        'Cat Pos': Number(result[13]),
+        Cat: result[12],
+        Bib: Number(result[0]),
+        Name: result[3],
+        Club: result[4],
+        'Finish Time': result[8],
+        'Chip Time': result[9],
+    }));
+
+    return {
+      name: Races.BelfastCityMarathon26,
+      results: results,
+      headers: ['Pos', 'Gender Pos', 'Cat Pos', 'Cat', 'Bib', 'Name', 'Club', 'Finish Time', 'Chip Time'],
+      headersMobile: ['Pos', 'Gender Pos', 'Cat Pos', 'Cat', 'Bib', 'Name', 'Club', 'Finish Time', 'Chip Time'],
     };
   }
 }
